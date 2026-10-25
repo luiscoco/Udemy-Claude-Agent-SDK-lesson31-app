@@ -1,0 +1,90 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent SDK LESSON 31 · How the app &lt;em&gt;was built.&lt;/em&gt;</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/code-highlighting.css"></head><body><main><div class="brand"><a href="/">How <span>Claude Agent SDK</span> Works</a><span class="badge">LESSON 31 / CLARIFYING QUESTIONS</span></div><header class="hero"><div><div class="eyebrow">ASK · CHOOSE · CONTINUE</div><h1>How the app <em>was built.</em></h1><p class="lead">Every architecture step has source-linked coloured code.</p></div><img src="/astronaut.png" alt="Course astronaut mascot"></header><nav class="nav" aria-label="Application sections"><a href="/">Application lab</a><a href="/learn.html">What you will learn</a><a href="/run.html">How to run</a><a href="/architecture.html">Architecture & workflow</a><a href="/walkthrough.html" aria-current="page">Code walkthrough</a><button id="theme" type="button">Dark mode</button></nav><div class="grid"><article class="card"><span class="number">01</span><h3>Question ownership</h3><p>Claude generates the questions and options. The host can add an Other control to its own UI without modifying the original questions array. Questions invented by the application belong in a separate application flow.</p></article><article class="card"><span class="number">02</span><h3>Answer shape</h3><p>Use full question text as each key, not the short header. The app joins multi-select labels with comma-space, which the SDK supports. Custom Other text is a per-question answer; response is a general reply replacing the structured answer list.</p></article><article class="card"><span class="number">03</span><h3>Question and preview limits</h3><p>The question tool supports one to four questions and two to four options per question. Preview fields are optional. The configured format applies to the session but does not guarantee a preview for every option.</p></article><article class="card"><span class="number">04</span><h3>HTML preview boundaries</h3><p>The SDK rejects script, style elements and DOCTYPE in generated HTML previews. This UI also sanitizes allowed tags and attributes, uses a sandbox without scripts and applies a content policy that blocks external resources. Trusted wrapper CSS keeps preview text readable.</p></article><article class="card"><span class="number">05</span><h3>Plan mode</h3><p>The plan experiment asks an actual clarifying question before a short read-only plan. It exposes only Read and AskUserQuestion and never enables edits. A model-generated plan artifact, if attempted by the runtime, remains outside the permitted tool scope and is logged.</p></article><article class="card"><span class="number">06</span><h3>Waiting versus deferred execution</h3><p>This app keeps a process alive while the callback promise waits. A two-minute timeout cancels and settles it. The documented PreToolUse defer pattern is a separate design for resuming persisted sessions and is explained here without pretending it is implemented.</p></article><article class="card"><span class="number">07</span><h3>Local teaching scope</h3><p>The loopback server accepts one active query and checks POST origins. Request IDs are single-use; invalid or stale decisions cannot approve another request. A deployed multi-user app needs authenticated ownership and its own durable lifecycle.</p></article><article class="card"><span class="number">08</span><h3>Evidence and API usage</h3><p>All questions, previews and native results in the live examples come from actual SDK calls. Scripted CLI/test selections are labelled explicitly. Each query has a $0.45 SDK budget threshold, not a prepaid cap. Credentials, dependencies and all teaching media stay outside Git.</p></article></div><section class="step workflow-step" id="workflow-step-01"><span class="number">01</span><h3>1. Validate the selected classroom task</h3><p>The host accepts a listed experiment. The student does not replace the tools list, permission mode or SDK tool configuration through browser input.</p><p class="source">Source: src/modes.ts · lines 26–32 · selected source; surrounding code omitted</p><pre><code class="language-typescript">export function validateConfig(value: unknown): RunConfig {
+  if (
+    !value ||
+    typeof value !== &quot;object&quot; ||
+    Array.isArray(value) ||
+    !MODES.includes((value as RunConfig).mode)
+  )</code></pre></section><section class="step workflow-step" id="workflow-step-02"><span class="number">02</span><h3>2. Enable the actual question tool</h3><p>An explicit tools list includes AskUserQuestion. The allow-entry comparison still needs human answers. HTML and Markdown use the real TypeScript preview configuration.</p><p class="source">Source: src/agent.ts · lines 114–121 · selected source; surrounding code omitted</p><pre><code class="language-typescript">tools: [&quot;Read&quot;, &quot;AskUserQuestion&quot;],
+    permissionMode: c.mode === &quot;plan&quot; ? &quot;plan&quot; : &quot;default&quot;,
+    allowedTools:
+      c.mode === &quot;preallowed&quot; ? [&quot;Read&quot;, &quot;AskUserQuestion&quot;] : [&quot;Read&quot;],
+    ...(previewFormat !== &quot;none&quot;
+      ? { toolConfig: { askUserQuestion: { previewFormat } } }
+      : {}),
+    ...(c.mode === &quot;plan&quot;</code></pre></section><section class="step workflow-step" id="workflow-step-03"><span class="number">03</span><h3>3. Start one real streaming query</h3><p>One SDK query generates the actual question payload, waits for answers and continues. The async input remains alive during the callback; it is released during cleanup.</p><p class="source">Source: src/agent.ts · lines 308–310 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const active = query({ prompt: input(), options });
+    run = active;
+    try {</code></pre></section><section class="step workflow-step" id="workflow-step-04"><span class="number">04</span><h3>4. Route the clarifying-question callback</h3><p>Branch on the actual tool name. Unrelated approval requests are denied by this dedicated handler; a question request is parsed and sent to the UI.</p><p class="source">Source: src/agent.ts · lines 205–213 · selected source; surrounding code omitted</p><pre><code class="language-typescript">if (toolName !== &quot;AskUserQuestion&quot;)
+        return {
+          behavior: &quot;deny&quot;,
+          message:
+            &quot;No unrelated tool approval is provided by this question handler.&quot;,
+        };
+      const questions = parseQuestions(input),
+        before = JSON.stringify(input.questions);
+      generated.push(...questions);</code></pre></section><section class="step workflow-step" id="workflow-step-05"><span class="number">05</span><h3>5. Validate without rewriting the questions</h3><p>Check question and option shapes, limits and duplicate texts. Return the original array and objects. The host never appends its own question to Claude’s tool input.</p><p class="source">Source: src/questions.ts · lines 9–16 · selected source; surrounding code omitted</p><pre><code class="language-typescript">export function parseQuestions(input: Record&lt;string, unknown&gt;): Question[] {
+  const qs = input.questions;
+  if (!Array.isArray(qs) || qs.length &lt; 1 || qs.length &gt; 4)
+    throw new Error(&quot;Expected one to four SDK-generated questions.&quot;);
+  const seen = new Set&lt;string&gt;();
+  for (const q of qs) {
+    if (
+      !q ||</code></pre></section><section class="step workflow-step" id="workflow-step-06"><span class="number">06</span><h3>6. Register a pending resolver and emit SSE</h3><p>Register the resolver before sending the request to the browser. Abort and timeout resolve cancellation, remove the request and clear its timer and listener.</p><p class="source">Source: src/questions.ts · lines 145–153 · selected source; surrounding code omitted</p><pre><code class="language-typescript">pending.set(id, { questions: details.questions, settle });
+    timer = setTimeout(abort, timeoutMs);
+    signal.addEventListener(&quot;abort&quot;, abort, { once: true });
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    emit({
+      type: &quot;question-request&quot;,</code></pre></section><section class="step workflow-step" id="workflow-step-07"><span class="number">07</span><h3>7. Render actual options as radio or checkbox controls</h3><p>Use radio buttons for a single choice and checkboxes for multi-select. Labels and descriptions come from the actual SDK options, with no preselected answer.</p><p class="source">Source: src/question-form.ts · lines 47–54 · selected source; surrounding code omitted</p><pre><code class="language-typescript">input.type = q.multiSelect ? &quot;checkbox&quot; : &quot;radio&quot;;
+      input.name = &quot;q-&quot; + index;
+      input.value = option.label;
+      input.id = `q-${index}-option-${optionIndex}`;
+      input.onchange = () =&gt; {
+        if (input.checked) {
+          field.querySelector&lt;HTMLInputElement&gt;(&quot;[data-custom]&quot;)!.checked =
+            false;</code></pre></section><section class="step workflow-step" id="workflow-step-08"><span class="number">08</span><h3>8. Render optional HTML and Markdown previews</h3><p>Sanitize model-generated fragments, isolate HTML in a sandboxed iframe and block external content through its content policy. Missing previews remain visibly absent.</p><p class="source">Source: src/previews.ts · lines 45–50 · selected source; surrounding code omitted</p><pre><code class="language-typescript">frame.setAttribute(&quot;sandbox&quot;, &quot;&quot;);
+    frame.referrerPolicy = &quot;no-referrer&quot;;
+    frame.title = &quot;Claude-generated preview: &quot; + label;
+    frame.srcdoc = `&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; style-src &#x27;unsafe-inline&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;&lt;style&gt;body{font:20px/1.4 Arial;margin:12px;color:#102544;background:#fff;overflow-wrap:anywhere}body *{font-size:20px!important}h1,h2,h3,strong{font-size:24px!important}pre{white-space:pre-wrap}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;${fragment}&lt;/body&gt;&lt;/html&gt;`;
+    target.append(frame);
+  } else if (format === &quot;markdown&quot;) {</code></pre></section><section class="step workflow-step" id="workflow-step-09"><span class="number">09</span><h3>9. Collect answers using full question text</h3><p>The form collects each selected label or custom answer under the original full question text. Other is a host UI control, not a new question or a literal answer label.</p><p class="source">Source: src/question-form.ts · lines 102–111 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const selections: Record&lt;string, Selection&gt; = Object.create(null);
+    request.questions.forEach((q, index) =&gt; {
+      const field = $(&quot;question-&quot; + index),
+        other = field.querySelector&lt;HTMLInputElement&gt;(&quot;[data-custom]&quot;)!.checked;
+      selections[q.question] = other
+        ? {
+            labels: [],
+            other:
+              field.querySelector&lt;HTMLTextAreaElement&gt;(&quot;.other-text&quot;)!.value,
+          }</code></pre></section><section class="step workflow-step" id="workflow-step-10"><span class="number">10</span><h3>10. Resolve the answer POST once</h3><p>Look up the pending request, validate the submitted selection against its original questions, then settle it once. Invalid submissions leave the same request waiting; stale IDs are rejected.</p><p class="source">Source: src/questions.ts · lines 122–128 · selected source; surrounding code omitted</p><pre><code class="language-typescript">export function resolveAnswers(id: string, decision: unknown) {
+  const item = pending.get(id);
+  if (!item) return false;
+  const result = mapAnswers(item.questions, decision);
+  item.settle({ ...result, requestId: id });
+  return true;
+}</code></pre></section><section class="step workflow-step" id="workflow-step-11"><span class="number">11</span><h3>11. Map selected labels and custom text</h3><p>Map a custom answer to the original question text. Otherwise join the actual selected labels with comma-space for the SDK response. A general response takes a separate branch.</p><p class="source">Source: src/questions.ts · lines 106–113 · selected source; surrounding code omitted</p><pre><code class="language-typescript">answers[q.question] = s.other.trim();
+    } else {
+      if (!s.labels.length)
+        throw new Error(&quot;Answer every question before submitting.&quot;);
+      answers[q.question] = s.labels.join(&quot;, &quot;);
+    }
+  }
+  return { cancelled: false, answers };</code></pre></section><section class="step workflow-step" id="workflow-step-12"><span class="number">12</span><h3>12. Preserve questions in updatedInput</h3><p>Return allow with the unchanged original questions and validated answers, or the optional general response. Claude receives this real tool result and continues with the student’s choices.</p><p class="source">Source: src/agent.ts · lines 249–258 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const updatedInput = {
+        ...input,
+        questions: input.questions,
+        ...(result.response !== undefined
+          ? { response: result.response }
+          : { answers: result.answers }),
+      };
+      originalQuestionsPreserved =
+        originalQuestionsPreserved &amp;&amp;
+        JSON.stringify(updatedInput.questions) === before;</code></pre></section><section class="step workflow-step" id="workflow-step-13"><span class="number">13</span><h3>13. Record evidence and clean up</h3><p>Record actual question and preview counts, answer mappings, callback calls, pending state and the unchanged fixture. No generated answer or preview is fabricated.</p><p class="source">Source: src/agent.ts · lines 382–390 · selected source; surrounding code omitted</p><pre><code class="language-typescript">const files = await workspace.inspect();
+    const observedOutcome = completed.length
+      ? nativeErrors
+        ? &quot;mixed&quot;
+        : &quot;execute&quot;
+      : &quot;block&quot;;
+    const evidence: Evidence = {
+      mode: c.mode,
+      prediction: c.prediction,</code></pre></section><footer>CLAUDE AGENT SDK · LESSON 31 · QUESTIONS · ANSWERS · PREVIEWS<br>TypeScript · local runtime · API key stays on the server</footer></main><script src="/navigation.js"></script><script src="/prism.js"></script><script src="/prism-markup.min.js"></script><script src="/prism-yaml.min.js"></script><script src="/prism-markdown.min.js"></script><script src="/prism-python.min.js"></script><script src="/code-highlighting.js"></script><script src="/marked.umd.js"></script><script src="/purify.min.js"></script></body></html>

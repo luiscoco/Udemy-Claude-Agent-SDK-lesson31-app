@@ -1,0 +1,273 @@
+{
+  "lanes": [
+    "Student UI",
+    "TypeScript host",
+    "Agent SDK",
+    "Question broker",
+    "Lab fixture"
+  ],
+  "arrows": [
+    [
+      0,
+      1,
+      "1. Validate the selected classroom task"
+    ],
+    [
+      1,
+      2,
+      "2. Enable the actual question tool"
+    ],
+    [
+      1,
+      2,
+      "3. Start one real streaming query"
+    ],
+    [
+      2,
+      1,
+      "4. Route the clarifying-question callback"
+    ],
+    [
+      1,
+      1,
+      "5. Validate without rewriting the questions"
+    ],
+    [
+      1,
+      3,
+      "6. Register a pending resolver and emit SSE"
+    ],
+    [
+      1,
+      0,
+      "7. Render actual options as radio or checkbox controls"
+    ],
+    [
+      1,
+      0,
+      "8. Render optional HTML and Markdown previews"
+    ],
+    [
+      0,
+      1,
+      "9. Collect answers using full question text"
+    ],
+    [
+      0,
+      3,
+      "10. Resolve the answer POST once"
+    ],
+    [
+      1,
+      1,
+      "11. Map selected labels and custom text"
+    ],
+    [
+      1,
+      2,
+      "12. Preserve questions in updatedInput"
+    ],
+    [
+      4,
+      1,
+      "13. Record evidence and clean up"
+    ]
+  ],
+  "steps": [
+    {
+      "number": 1,
+      "title": "Validate the selected classroom task",
+      "source": "src/modes.ts",
+      "code": "export function validateConfig(value: unknown): RunConfig {\n  if (\n    !value ||\n    typeof value !== \"object\" ||\n    Array.isArray(value) ||\n    !MODES.includes((value as RunConfig).mode)\n  )",
+      "language": "typescript",
+      "explanation": "The host accepts a listed experiment. The student does not replace the tools list, permission mode or SDK tool configuration through browser input.",
+      "firstLine": 26,
+      "lastLine": 32,
+      "anchors": [
+        "export function validateConfig(value: unknown): RunConfig {"
+      ],
+      "sourceSHA256": "25b88d1003e20a3312752553f679830a4312b59267b26f960282cf663de6ec70",
+      "narration": "Step 1. The host accepts a listed experiment. The student does not replace the tools list, permission mode or SDK tool configuration through browser input. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 2,
+      "title": "Enable the actual question tool",
+      "source": "src/agent.ts",
+      "code": "tools: [\"Read\", \"AskUserQuestion\"],\n    permissionMode: c.mode === \"plan\" ? \"plan\" : \"default\",\n    allowedTools:\n      c.mode === \"preallowed\" ? [\"Read\", \"AskUserQuestion\"] : [\"Read\"],\n    ...(previewFormat !== \"none\"\n      ? { toolConfig: { askUserQuestion: { previewFormat } } }\n      : {}),\n    ...(c.mode === \"plan\"",
+      "language": "typescript",
+      "explanation": "An explicit tools list includes AskUserQuestion. The allow-entry comparison still needs human answers. HTML and Markdown use the real TypeScript preview configuration.",
+      "firstLine": 114,
+      "lastLine": 121,
+      "anchors": [
+        "tools: [\"Read\", \"AskUserQuestion\"],"
+      ],
+      "sourceSHA256": "dbd7a6d0bce614cdf850e6b41cab3c8f6f4d1962b5efc79feb10569598c7d529",
+      "narration": "Step 2. An explicit tools list includes AskUserQuestion. The allow-entry comparison still needs human answers. HTML and Markdown use the real TypeScript preview configuration. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 3,
+      "title": "Start one real streaming query",
+      "source": "src/agent.ts",
+      "code": "const active = query({ prompt: input(), options });\n    run = active;\n    try {",
+      "language": "typescript",
+      "explanation": "One SDK query generates the actual question payload, waits for answers and continues. The async input remains alive during the callback; it is released during cleanup.",
+      "firstLine": 308,
+      "lastLine": 310,
+      "anchors": [
+        "const active = query({ prompt: input(), options });"
+      ],
+      "sourceSHA256": "dbd7a6d0bce614cdf850e6b41cab3c8f6f4d1962b5efc79feb10569598c7d529",
+      "narration": "Step 3. One SDK query generates the actual question payload, waits for answers and continues. The async input remains alive during the callback; it is released during cleanup. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 4,
+      "title": "Route the clarifying-question callback",
+      "source": "src/agent.ts",
+      "code": "if (toolName !== \"AskUserQuestion\")\n        return {\n          behavior: \"deny\",\n          message:\n            \"No unrelated tool approval is provided by this question handler.\",\n        };\n      const questions = parseQuestions(input),\n        before = JSON.stringify(input.questions);\n      generated.push(...questions);",
+      "language": "typescript",
+      "explanation": "Branch on the actual tool name. Unrelated approval requests are denied by this dedicated handler; a question request is parsed and sent to the UI.",
+      "firstLine": 205,
+      "lastLine": 213,
+      "anchors": [
+        "if (toolName !== \"AskUserQuestion\")"
+      ],
+      "sourceSHA256": "dbd7a6d0bce614cdf850e6b41cab3c8f6f4d1962b5efc79feb10569598c7d529",
+      "narration": "Step 4. Branch on the actual tool name. Unrelated approval requests are denied by this dedicated handler; a question request is parsed and sent to the UI. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 5,
+      "title": "Validate without rewriting the questions",
+      "source": "src/questions.ts",
+      "code": "export function parseQuestions(input: Record<string, unknown>): Question[] {\n  const qs = input.questions;\n  if (!Array.isArray(qs) || qs.length < 1 || qs.length > 4)\n    throw new Error(\"Expected one to four SDK-generated questions.\");\n  const seen = new Set<string>();\n  for (const q of qs) {\n    if (\n      !q ||",
+      "language": "typescript",
+      "explanation": "Check question and option shapes, limits and duplicate texts. Return the original array and objects. The host never appends its own question to Claude\u2019s tool input.",
+      "firstLine": 9,
+      "lastLine": 16,
+      "anchors": [
+        "export function parseQuestions(input: Record<string, unknown>): Question[] {"
+      ],
+      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "narration": "Step 5. Check question and option shapes, limits and duplicate texts. Return the original array and objects. The host never appends its own question to Claude\u2019s tool input. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 6,
+      "title": "Register a pending resolver and emit SSE",
+      "source": "src/questions.ts",
+      "code": "pending.set(id, { questions: details.questions, settle });\n    timer = setTimeout(abort, timeoutMs);\n    signal.addEventListener(\"abort\", abort, { once: true });\n    if (signal.aborted) {\n      abort();\n      return;\n    }\n    emit({\n      type: \"question-request\",",
+      "language": "typescript",
+      "explanation": "Register the resolver before sending the request to the browser. Abort and timeout resolve cancellation, remove the request and clear its timer and listener.",
+      "firstLine": 145,
+      "lastLine": 153,
+      "anchors": [
+        "pending.set(id, { questions: details.questions, settle });"
+      ],
+      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "narration": "Step 6. Register the resolver before sending the request to the browser. Abort and timeout resolve cancellation, remove the request and clear its timer and listener. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 7,
+      "title": "Render actual options as radio or checkbox controls",
+      "source": "src/question-form.ts",
+      "code": "input.type = q.multiSelect ? \"checkbox\" : \"radio\";\n      input.name = \"q-\" + index;\n      input.value = option.label;\n      input.id = `q-${index}-option-${optionIndex}`;\n      input.onchange = () => {\n        if (input.checked) {\n          field.querySelector<HTMLInputElement>(\"[data-custom]\")!.checked =\n            false;",
+      "language": "typescript",
+      "explanation": "Use radio buttons for a single choice and checkboxes for multi-select. Labels and descriptions come from the actual SDK options, with no preselected answer.",
+      "firstLine": 47,
+      "lastLine": 54,
+      "anchors": [
+        "input.type = q.multiSelect ? \"checkbox\" : \"radio\";"
+      ],
+      "sourceSHA256": "bef669c80e79855fb527ec9de6ee79220de36a0b7cc0f928d88970ab96dbf809",
+      "narration": "Step 7. Use radio buttons for a single choice and checkboxes for multi-select. Labels and descriptions come from the actual SDK options, with no preselected answer. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 8,
+      "title": "Render optional HTML and Markdown previews",
+      "source": "src/previews.ts",
+      "code": "frame.setAttribute(\"sandbox\", \"\");\n    frame.referrerPolicy = \"no-referrer\";\n    frame.title = \"Claude-generated preview: \" + label;\n    frame.srcdoc = `<!doctype html><html><head><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\"><style>body{font:20px/1.4 Arial;margin:12px;color:#102544;background:#fff;overflow-wrap:anywhere}body *{font-size:20px!important}h1,h2,h3,strong{font-size:24px!important}pre{white-space:pre-wrap}</style></head><body>${fragment}</body></html>`;\n    target.append(frame);\n  } else if (format === \"markdown\") {",
+      "language": "typescript",
+      "explanation": "Sanitize model-generated fragments, isolate HTML in a sandboxed iframe and block external content through its content policy. Missing previews remain visibly absent.",
+      "firstLine": 45,
+      "lastLine": 50,
+      "anchors": [
+        "frame.setAttribute(\"sandbox\", \"\");"
+      ],
+      "sourceSHA256": "7c1fcdb78685f5cce5756bfb213dcd6f4bac5e9e8e6bb4febf79f7ac36fe2092",
+      "narration": "Step 8. Sanitize model-generated fragments, isolate HTML in a sandboxed iframe and block external content through its content policy. Missing previews remain visibly absent. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 9,
+      "title": "Collect answers using full question text",
+      "source": "src/question-form.ts",
+      "code": "const selections: Record<string, Selection> = Object.create(null);\n    request.questions.forEach((q, index) => {\n      const field = $(\"question-\" + index),\n        other = field.querySelector<HTMLInputElement>(\"[data-custom]\")!.checked;\n      selections[q.question] = other\n        ? {\n            labels: [],\n            other:\n              field.querySelector<HTMLTextAreaElement>(\".other-text\")!.value,\n          }",
+      "language": "typescript",
+      "explanation": "The form collects each selected label or custom answer under the original full question text. Other is a host UI control, not a new question or a literal answer label.",
+      "firstLine": 102,
+      "lastLine": 111,
+      "anchors": [
+        "const selections: Record<string, Selection> = Object.create(null);"
+      ],
+      "sourceSHA256": "bef669c80e79855fb527ec9de6ee79220de36a0b7cc0f928d88970ab96dbf809",
+      "narration": "Step 9. The form collects each selected label or custom answer under the original full question text. Other is a host UI control, not a new question or a literal answer label. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 10,
+      "title": "Resolve the answer POST once",
+      "source": "src/questions.ts",
+      "code": "export function resolveAnswers(id: string, decision: unknown) {\n  const item = pending.get(id);\n  if (!item) return false;\n  const result = mapAnswers(item.questions, decision);\n  item.settle({ ...result, requestId: id });\n  return true;\n}",
+      "language": "typescript",
+      "explanation": "Look up the pending request, validate the submitted selection against its original questions, then settle it once. Invalid submissions leave the same request waiting; stale IDs are rejected.",
+      "firstLine": 122,
+      "lastLine": 128,
+      "anchors": [
+        "export function resolveAnswers(id: string, decision: unknown) {"
+      ],
+      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "narration": "Step 10. Look up the pending request, validate the submitted selection against its original questions, then settle it once. Invalid submissions leave the same request waiting; stale IDs are rejected. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 11,
+      "title": "Map selected labels and custom text",
+      "source": "src/questions.ts",
+      "code": "answers[q.question] = s.other.trim();\n    } else {\n      if (!s.labels.length)\n        throw new Error(\"Answer every question before submitting.\");\n      answers[q.question] = s.labels.join(\", \");\n    }\n  }\n  return { cancelled: false, answers };",
+      "language": "typescript",
+      "explanation": "Map a custom answer to the original question text. Otherwise join the actual selected labels with comma-space for the SDK response. A general response takes a separate branch.",
+      "firstLine": 106,
+      "lastLine": 113,
+      "anchors": [
+        "answers[q.question] = s.other.trim();"
+      ],
+      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "narration": "Step 11. Map a custom answer to the original question text. Otherwise join the actual selected labels with comma-space for the SDK response. A general response takes a separate branch. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 12,
+      "title": "Preserve questions in updatedInput",
+      "source": "src/agent.ts",
+      "code": "const updatedInput = {\n        ...input,\n        questions: input.questions,\n        ...(result.response !== undefined\n          ? { response: result.response }\n          : { answers: result.answers }),\n      };\n      originalQuestionsPreserved =\n        originalQuestionsPreserved &&\n        JSON.stringify(updatedInput.questions) === before;",
+      "language": "typescript",
+      "explanation": "Return allow with the unchanged original questions and validated answers, or the optional general response. Claude receives this real tool result and continues with the student\u2019s choices.",
+      "firstLine": 249,
+      "lastLine": 258,
+      "anchors": [
+        "const updatedInput = {"
+      ],
+      "sourceSHA256": "dbd7a6d0bce614cdf850e6b41cab3c8f6f4d1962b5efc79feb10569598c7d529",
+      "narration": "Step 12. Return allow with the unchanged original questions and validated answers, or the optional general response. Claude receives this real tool result and continues with the student\u2019s choices. This source excerpt shows the corresponding application statement."
+    },
+    {
+      "number": 13,
+      "title": "Record evidence and clean up",
+      "source": "src/agent.ts",
+      "code": "const files = await workspace.inspect();\n    const observedOutcome = completed.length\n      ? nativeErrors\n        ? \"mixed\"\n        : \"execute\"\n      : \"block\";\n    const evidence: Evidence = {\n      mode: c.mode,\n      prediction: c.prediction,",
+      "language": "typescript",
+      "explanation": "Record actual question and preview counts, answer mappings, callback calls, pending state and the unchanged fixture. No generated answer or preview is fabricated.",
+      "firstLine": 382,
+      "lastLine": 390,
+      "anchors": [
+        "const files = await workspace.inspect();"
+      ],
+      "sourceSHA256": "dbd7a6d0bce614cdf850e6b41cab3c8f6f4d1962b5efc79feb10569598c7d529",
+      "narration": "Step 13. Record actual question and preview counts, answer mappings, callback calls, pending state and the unchanged fixture. No generated answer or preview is fabricated. This source excerpt shows the corresponding application statement."
+    }
+  ]
+}

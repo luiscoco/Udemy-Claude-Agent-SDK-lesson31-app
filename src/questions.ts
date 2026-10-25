@@ -19,7 +19,7 @@ export function parseQuestions(input: Record<string, unknown>): Question[] {
       q.question.length > 2000 ||
       seen.has(q.question) ||
       typeof q.header !== "string" ||
-      q.header.length > 12 ||
+      q.header.length > 200 ||
       typeof q.multiSelect !== "boolean" ||
       !Array.isArray(q.options) ||
       q.options.length < 2 ||

@@ -146,7 +146,7 @@
       "anchors": [
         "export function parseQuestions(input: Record<string, unknown>): Question[] {"
       ],
-      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "sourceSHA256": "5c86d49b72f1bf98f3e67f8647713531fe84931231700c4025a1d452b168222f",
       "narration": "Step 5. Check question and option shapes, limits and duplicate texts. Return the original array and objects. The host never appends its own question to Claude\u2019s tool input. This source excerpt shows the corresponding application statement."
     },
     {
@@ -161,7 +161,7 @@
       "anchors": [
         "pending.set(id, { questions: details.questions, settle });"
       ],
-      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "sourceSHA256": "5c86d49b72f1bf98f3e67f8647713531fe84931231700c4025a1d452b168222f",
       "narration": "Step 6. Register the resolver before sending the request to the browser. Abort and timeout resolve cancellation, remove the request and clear its timer and listener. This source excerpt shows the corresponding application statement."
     },
     {
@@ -221,7 +221,7 @@
       "anchors": [
         "export function resolveAnswers(id: string, decision: unknown) {"
       ],
-      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "sourceSHA256": "5c86d49b72f1bf98f3e67f8647713531fe84931231700c4025a1d452b168222f",
       "narration": "Step 10. Look up the pending request, validate the submitted selection against its original questions, then settle it once. Invalid submissions leave the same request waiting; stale IDs are rejected. This source excerpt shows the corresponding application statement."
     },
     {
@@ -236,7 +236,7 @@
       "anchors": [
         "answers[q.question] = s.other.trim();"
       ],
-      "sourceSHA256": "07d5e375f91a9a65745a5f7a9df545a6cd342643489f6cdb93df1440ab1159b4",
+      "sourceSHA256": "5c86d49b72f1bf98f3e67f8647713531fe84931231700c4025a1d452b168222f",
       "narration": "Step 11. Map a custom answer to the original question text. Otherwise join the actual selected labels with comma-space for the SDK response. A general response takes a separate branch. This source excerpt shows the corresponding application statement."
     },
     {

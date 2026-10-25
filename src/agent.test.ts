@@ -36,6 +36,8 @@ test("parse original SDK questions without mutating or adding them", () => {
     parseQuestions({ questions: [questions[0], questions[0]] }),
   );
   assert.throws(() => validateConfig({ mode: "bypass" }));
+  const longerHeader = [{ ...questions[0], header: "Lesson Format" }];
+  assert.equal(parseQuestions({ questions: longerHeader }), longerHeader);
 });
 test("map full question texts to actual labels and joined multi-select labels", () => {
   const r = mapAnswers(questions, {
